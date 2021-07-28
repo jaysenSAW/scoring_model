@@ -16,7 +16,7 @@ import numpy as np
 import joblib
 
 # load the model from disk
-mdl = joblib.load("logisitc_model.joblib")
+mdl = joblib.load("logisitc_model1_gridSearch.joblib")
 
 
 def generate_table(dataframe, max_rows=3):
@@ -44,18 +44,15 @@ def generate_table(dataframe, max_rows=3):
 #####################################################################
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-g', action="store", dest="g", type=str,
-help="data file (CSV).\nExample: data.csv", default ="clean_data.csv")
+help="data file (CSV).\nExample: data.csv", default ="data_for_server.csv")
 
 #Load data
 
-dt = pd.read_csv('clean_data.csv')
+dt = pd.read_csv('data_for_server.csv')
 bad_loan = dt[dt["TARGET"] == 1 ]
 good_loan = dt[dt["TARGET"] == 0 ]
 targets = dt.TARGET.unique()
 
-# For bad loan we look sex ratio
-tmp1 = good_loan['CODE_GENDER_M'].value_counts(normalize = True)
-tmp2 = bad_loan['CODE_GENDER_M'].value_counts(normalize = True)
 
 df = px.data.tips()
 days = df.day.unique()
@@ -152,8 +149,7 @@ label_x = {'INCOME' :'AMT_INCOME_TOTAL',
             'FAMILIY MEMBERS': 'CNT_FAM_MEMBERS'
             }
 
-label_y = {'Credit status' :'TARGET',
-            'Sex (F/M)': 'CODE_GENDER_M',
+label_y = {'Credit status' :'TARGET'
             }
 
 ALLOWED_TYPES = (
@@ -167,7 +163,193 @@ ALLOWED_TYPES = (
 
 app.layout = html.Div(
     children=[
+
+    dcc.Tabs([
+    dcc.Tab(label='Status informations', children=[
+        dcc.Input(
+        id="age_dcc",
+        placeholder='Age',
+        type='number',
+        value='Age'
+        ),
+        dcc.Input(
+        id="family_number",
+        placeholder='Family numbers',
+        type='number',
+        value='Family number'
+        ),
+
+        dcc.Dropdown(
+        id="education_type",
+        options=[
+            {'label': 'Higher education', 'value': 'NAME_EDUCATION_TYPE_Higher education'},
+            {'label': 'Incomplete higher', 'value': 'NAME_EDUCATION_TYPE_Incomplete higher'},
+            {'label': 'Secondary / secondary special', 'value': 'NAME_EDUCATION_TYPE_Secondary / secondary special'},
+            {'label': 'Other', 'value': 'NAME_EDUCATION_TYPE_Other'}
+
+        ],
+        value='NAME_EDUCATION_TYPE_Higher education'
+        ),
+
+        dcc.Dropdown(
+        id="status_type",
+        options=[
+            {'label': 'Single / not married', 'value': 'Single'},
+            {'label': 'Married', 'value': 'Married'},
+            {'label': 'Civil marriage', 'value': 'CV'},
+            {'label': 'Married', 'value': 'Married'},
+            {'label': 'Separated', 'value': 'Separated'},
+            {'label': 'Widow', 'value': 'Widow '}
+        ],
+        value='Single'
+        ),
+
+        dcc.Dropdown(
+        id="contrat_type",
+        options=[
+            {'label': 'Cash', 'value': 'NAME_CONTRACT_TYPE_Cash loans'},
+            {'label': 'Revolving', 'value': 'NAME_CONTRACT_TYPE_Revolving loans'}
+        ],
+        value='NAME_CONTRACT_TYPE_Cash loans'
+        ),
+
+    ]),
+    dcc.Tab(label='Incomes Informations', children=[
+        dcc.Input(
+        id="income",
+        placeholder='Income for one year',
+        type='number',
+        value='Income for one year'
+        ),
+
+        dcc.Input(
+        id="annuity",
+        placeholder='Monthly payment for loan',
+        type='number',
+        value='Monthly payment for loan'
+        ),
+
+        dcc.Input(
+        id="years_em",
+        placeholder='Years employed',
+        type='number',
+        value='Years employed'
+        ),
+
+        dcc.Input(
+        id="car_age",
+        placeholder="Owner's car age",
+        type='number',
+        value="Owner's car age"
+        ),
+        dcc.Dropdown(
+        id="occupation_type",
+        options=[
+            {'label': 'Accountants', 'value': 'OCCUPATION_TYPE_Accountants'},
+            {'label': 'Core staff', 'value': 'OCCUPATION_TYPE_Core staff'},
+            {'label': 'Drivers', 'value': 'OCCUPATION_TYPE_Drivers'},
+            {'label': 'HR staff', 'value': 'OCCUPATION_TYPE_HR staff'},
+            {'label': 'High skill tech staff', 'value': 'OCCUPATION_TYPE_High skill tech staff'},
+            {'label': 'Laborers', 'value': 'OCCUPATION_TYPE_Laborers'},
+            {'label': 'Managers', 'value': 'OCCUPATION_TYPE_Managers'},
+            {'label': 'Medecine staff', 'value': 'OCCUPATION_TYPE_Medecine staff'},
+            {'label': 'Other', 'value': 'OCCUPATION_TYPE_Other'}
+        ],
+        value='OCCUPATION_TYPE_Accountants'
+        ),
+
+    ]),
+    dcc.Tab(label='Financial history', children=[
+
+        dcc.Input(
+        id="cdt_amount_active",
+        placeholder='# credit active',
+        type='number',
+        value='# of current credit'
+        ),
+        dcc.Input(
+        id="cdt_active",
+        placeholder='Current credit payment',
+        type='number',
+        value='Current credit payment'
+        ),
+        dcc.Input(
+        id="cdt_overdue_active",
+        placeholder='Overdue in current credit',
+        type='number',
+        value='Overdue in current credit payment'
+        ),
+
+        dcc.Input(
+        id="cdt_amount_sold",
+        placeholder='# of solded credit',
+        type='number',
+        value='# of solded credit'
+        ),
+        dcc.Input(
+        id="cdt_sold",
+        placeholder='Amount of money solded',
+        type='number',
+        value='Amount of solded credit'
+        ),
+        dcc.Input(
+        id="cdt_overdue_sold",
+        placeholder='Overdue for solded credit',
+        type='number',
+        value='Overdue for solded credit'
+        ),
+
+        dcc.Input(
+        id="cdt_amount_closed",
+        placeholder='# credit closed',
+        type='number',
+        value='# of closed credit'
+        ),
+        dcc.Input(
+        id="cdt_closed",
+        placeholder='Amount of money for closed credit',
+        type='number',
+        value='Closed credit payment'
+        ),
+        dcc.Input(
+        id="cdt_overdue_closed",
+        placeholder='Overdue for closed credit',
+        type='number',
+        value='Overdue for closed credit payment'
+        ),
+
+        dcc.Input(
+        id="cdt_amount_bad",
+        placeholder='# credit bad',
+        type='number',
+        value='# of bad credit'
+        ),
+        dcc.Input(
+        id="cdt_bad",
+        placeholder='Amount of money for bad credit',
+        type='number',
+        value='Bad credit payment'
+        ),
+        dcc.Input(
+        id="cdt_overdue_bad",
+        placeholder='Overdue for bad credit',
+        type='number',
+        value='Overdue for bad credit payment'
+        ),
+
+        dcc.Input(
+        id="previous_cdt",
+        placeholder='Amount of money for previous credit',
+        type='number',
+        value='Previous amount for credit'
+        )
+
+    ]),
+    ]),
+
     html.H1(children='Data preview'),
+    html.Hr(),
+    html.Div(id="number-out"),
     generate_table(dt),
     html.H1(children='Comparison between good and bad loan',
             style={'textAlign': 'center'}),
@@ -177,11 +359,6 @@ app.layout = html.Div(
     dcc.Graph(id="bar_edu", figure = fig2),
 
     #dcc.Graph(id="pie-chart", figure = fig_pie),
-
-    html.P(children="For good loan sex ratio between femal and male are {0:.2f}/{1:.2f}.".format(
-    tmp1[0], tmp1[1])),
-    html.P(children="For bad loan sex ratio between femal and male are {0:.2f}/{1:.2f}.".format(
-    tmp2[0], tmp2[1])),
 
 
     html.H1(children='Distribution comparaison'),
@@ -216,73 +393,7 @@ app.layout = html.Div(
     ),
 
 
-    html.H1(children='Prediction'),
-
-    dcc.Tabs([
-    dcc.Tab(label='Status informations', children=[
-        dcc.Input(
-        placeholder='Age',
-        type='text',
-        value='Age'
-        ),
-        dcc.Input(
-        placeholder='Family numbers',
-        type='text',
-        value='Family number'
-        ),
-
-        dcc.Dropdown(
-        options=[
-            {'label': 'Higher education', 'value': 'NAME_EDUCATION_TYPE_Higher education'},
-            {'label': 'Incomplete higher', 'value': 'NAME_EDUCATION_TYPE_Incomplete higher'},
-            {'label': 'Secondary / secondary special', 'value': 'NAME_EDUCATION_TYPE_Secondary / secondary special'},
-            {'label': 'Other', 'value': 'NAME_EDUCATION_TYPE_Other'}
-
-        ],
-        value='NAME_EDUCATION_TYPE_Higher education'
-        ),
-
-        dcc.Dropdown(
-        options=[
-            {'label': 'Single / not married', 'value': 'Single'},
-            {'label': 'Married', 'value': 'Married'},
-            {'label': 'Civil marriage', 'value': 'CV'},
-            {'label': 'Married', 'value': 'Married'},
-            {'label': 'Separated', 'value': 'Separated'},
-            {'label': 'Widow', 'value': 'Widow '}
-        ],
-        value='Single'
-        ),
-
-        dcc.Dropdown(
-        options=[
-            {'label': 'Cash', 'value': 'NAME_CONTRACT_TYPE_Cash loans'},
-            {'label': 'Revolving', 'value': 'NAME_CONTRACT_TYPE_Revolving loans'}
-        ],
-        value='NAME_CONTRACT_TYPE_Cash loans'
-        ),
-
-    ]),
-    dcc.Tab(label='Incomes Informations', children=[
-        dcc.Input(
-        placeholder='Income for one year',
-        type='text',
-        value='Income for one year'
-        ),
-        dcc.Input(
-        placeholder='AMT ANNUITY',
-        type='text',
-        value='Monthly payment for loan'
-        )
-    ]),
-    dcc.Tab(label='Tab three', children=[
-        dcc.Input(
-        placeholder='years employed',
-        type='text',
-        value='years employed'
-        )
-    ]),
-    ])
+    html.H1(children='Prediction')
 
     ]
 )
@@ -295,6 +406,85 @@ app.layout = html.Div(
 def generate_chart(x, y):
     fig3 = px.box(dt, x=x, y=y)
     return fig3
+
+@app.callback(
+    Output("number-out", "children"),
+    Input("income", "value"),
+    Input("annuity", "value"),
+    Input("age_dcc", "value"),
+    Input("years_em", "value"),
+    Input("car_age", "value"),
+    Input("family_number", "value"),
+    Input("education_type", "value"),
+    Input("status_type", "value"),
+    Input("contrat_type", "value"),
+    Input("occupation_type", "value"),
+    Input("cdt_amount_active", "value"),
+    Input("cdt_active", "value"),
+    Input("cdt_overdue_active", "value"),
+    Input("cdt_amount_sold", "value"),
+    Input("cdt_sold", "value"),
+    Input("cdt_overdue_sold", "value"),
+    Input("cdt_amount_closed", "value"),
+    Input("cdt_closed", "value"),
+    Input("cdt_overdue_closed", "value"),
+    Input("cdt_amount_bad", "value"),
+    Input("cdt_bad", "value"),
+    Input("cdt_overdue_bad", "value"),
+    Input("previous_cdt", "value")
+)
+def assign_credit(fincome, fannuity, fage, fyear, fcar, fcnt_family,
+val_edu, val_fam_status, val_contrat_type, val_occupation,
+fcdt_active, fcdt_overdue_active, fcredit_mean_active,
+fcdt_sold,  fcdt_overdue_sold, fcredit_mean_sold,
+fcdt_closed,  fcdt_overdue_closed, fcredit_mean_closed,
+fcdt_bad,  fcdt_overdue_bad, fcredit_mean_bad, fprevious):
+    col = ['AMT_INCOME_TOTAL', 'AMT_ANNUITY', 'AGE', 'YEARS_EMPLOYED',
+    'OWN_CAR_AGE', 'CNT_FAM_MEMBERS', 'NAME_EDUCATION_TYPE_Higher education',
+    'NAME_EDUCATION_TYPE_Incomplete higher', 'NAME_EDUCATION_TYPE_Other',
+    'NAME_EDUCATION_TYPE_Secondary / secondary special',
+    'NAME_FAMILY_STATUS_Civil marriage', 'NAME_FAMILY_STATUS_Married',
+    'NAME_FAMILY_STATUS_Separated', 'NAME_FAMILY_STATUS_Single / not married',
+    'NAME_FAMILY_STATUS_Widow', 'NAME_CONTRACT_TYPE_Cash loans',
+    'NAME_CONTRACT_TYPE_Revolving loans', 'OCCUPATION_TYPE_Accountants',
+    'OCCUPATION_TYPE_Core staff', 'OCCUPATION_TYPE_Drivers',
+    'OCCUPATION_TYPE_HR staff', 'OCCUPATION_TYPE_High skill tech staff',
+    'OCCUPATION_TYPE_IT staff', 'OCCUPATION_TYPE_Laborers',
+    'OCCUPATION_TYPE_Managers', 'OCCUPATION_TYPE_Medicine staff',
+    'OCCUPATION_TYPE_Other', 'OCCUPATION_TYPE_Private service staff',
+    'OCCUPATION_TYPE_Realty agents', 'OCCUPATION_TYPE_Sales staff',
+    'CREDIT_active', 'CREDIT_MEAN_OVERDUE_active', 'CREDIT_MEAN_active', 'proportion_OVERDUE_active',
+    'CREDIT_sold', 'CREDIT_MEAN_OVERDUE_sold', 'CREDIT_MEAN_sold', 'proportion_OVERDUE_sold',
+    'CREDIT_closed', 'CREDIT_MEAN_OVERDUE_closed', 'CREDIT_MEAN_closed', 'proportion_OVERDUE_closed',
+    'CREDIT_bad', 'CREDIT_MEAN_OVERDUE_bad', 'CREDIT_MEAN_bad', 'proportion_OVERDUE_bad',
+    'previous_CREDIT', 'Number_years_Loan_Theorical', 'AMT_CREDIT_ANNUITY_RATIO']
+    tmp = {}
+    for c in col:
+        tmp[c] = [0]
+    tmp['AMT_INCOME_TOTAL'] = fincome
+    tmp["AMT_ANNUITY"] = fannuity
+    tmp["AGE"] = fage
+    tmp["YEARS_EMPLOYED"] = fyear
+    tmp['OWN_CAR_AGE'] = fcar
+    tmp['CNT_FAM_MEMBERS'] = fcnt_family
+    tmp[val_edu] = 1
+    tmp[val_fam_status] = 1
+    tmp[val_contrat_type] = 1
+    tmp[val_occupation] = 1
+    tmp['CREDIT_active'] = fcdt_active
+    tmp['CREDIT_MEAN_OVERDUE_active'] = fcdt_overdue_active
+    tmp["CREDIT_MEAN_active"] = fcredit_mean_active
+    tmp["CREDIT_sold"] = fcdt_sold
+    tmp["CREDIT_MEAN_OVERDUE_sold"] = fcdt_overdue_sold
+    tmp['CREDIT_MEAN_sold'] = fcredit_mean_sold
+    tmp['CREDIT_closed'] = fcdt_closed
+    tmp['CREDIT_MEAN_OVERDUE_closed'] = fcdt_overdue_closed
+    tmp['CREDIT_MEAN_closed'] = fcredit_mean_closed
+    tmp['CREDIT_bad'] = fcdt_bad
+    tmp['CREDIT_MEAN_OVERDUE_bad'] = fcdt_overdue_bad
+    tmp['CREDIT_MEAN_bad'] = fcredit_mean_bad
+    return "dfalse: {}, dtrue: {}, range: {}".format(val_edu, val_contrat_type, fage)
+
 
 
 if __name__ == '__main__':
