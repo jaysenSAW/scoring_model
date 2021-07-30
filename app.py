@@ -44,7 +44,7 @@ def generate_table(dataframe, max_rows=3):
 #####################################################################
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-g', action="store", dest="g", type=str,
-help="data file (CSV).\nExample: data.csv", default ="data_for_server.csv")
+help="data file (CSV).\nExample: data.csv", default ="clean_data1.csv")
 
 #Load data
 
@@ -177,6 +177,15 @@ app.layout = html.Div(
         placeholder='Family numbers',
         type='number',
         value='Family number'
+        ),
+
+        dcc.Dropdown(
+        id="sex",
+        options=[
+            {'label': 'Male', 'value': '1'},
+            {'label': 'Female', 'value': '0'}
+        ],
+        value='1'
         ),
 
         dcc.Dropdown(
@@ -347,10 +356,10 @@ app.layout = html.Div(
     ]),
     ]),
 
+    html.Div(id="number-out"),
     html.H1(children='Data preview'),
     html.Hr(),
-    html.Div(id="number-out"),
-    generate_table(dt),
+    #generate_table(dt),
     html.H1(children='Comparison between good and bad loan',
             style={'textAlign': 'center'}),
 
@@ -362,17 +371,7 @@ app.layout = html.Div(
 
 
     html.H1(children='Distribution comparaison'),
-    html.P(children="75% of accepted candidats have an income above {0}$.".format(dt["AMT_INCOME_TOTAL"].quantile(0.25))),
-
-    html.P("x-axis:"),
-    dcc.Checklist(
-        id='x-axis',
-        options=[{'value': label_y[x], 'label': x}
-                 for x in label_y.keys()],
-        value=['TARGET'],
-        labelStyle={'display': 'inline-block'}
-    ),
-    html.P("y-axis:"),
+    html.P(children="75% of accepted candidats have an income above {0:.2f}$.".format(10**dt["AMT_INCOME_TOTAL"].quantile(0.25))),
 
 
     dcc.RadioItems(
@@ -384,9 +383,7 @@ app.layout = html.Div(
     ),
     dcc.Graph(id="box-plot"),
 
-    html.Div(children='''
-            Age doesn't have an impact about the capacity to refund a loan.
-    '''),
+
     dcc.Graph(
         id='hist-CNT_FAM_MEMBERS',
         figure=hist
@@ -401,10 +398,13 @@ app.layout = html.Div(
 
 @app.callback(
     Output("box-plot", "figure"),
-    [Input("x-axis", "value"),
-     Input("y-axis", "value")])
-def generate_chart(x, y):
-    fig3 = px.box(dt, x=x, y=y)
+     [Input("y-axis", "value")]
+     )
+def generate_chart(y):
+    fig3 = px.box(dt, x="TARGET", y=y)
+    fig3.update_layout(
+        title_text="Accepted/Reject loan", title_x=0.5
+    )
     return fig3
 
 @app.callback(
@@ -418,6 +418,7 @@ def generate_chart(x, y):
     Input("education_type", "value"),
     Input("status_type", "value"),
     Input("contrat_type", "value"),
+    Input("sex", "value"),
     Input("occupation_type", "value"),
     Input("cdt_amount_active", "value"),
     Input("cdt_active", "value"),
@@ -434,7 +435,7 @@ def generate_chart(x, y):
     Input("previous_cdt", "value")
 )
 def assign_credit(fincome, fannuity, fage, fyear, fcar, fcnt_family,
-val_edu, val_fam_status, val_contrat_type, val_occupation,
+val_edu, val_fam_status, val_contrat_type, val_sex, val_occupation,
 fcdt_active, fcdt_overdue_active, fcredit_mean_active,
 fcdt_sold,  fcdt_overdue_sold, fcredit_mean_sold,
 fcdt_closed,  fcdt_overdue_closed, fcredit_mean_closed,
@@ -446,7 +447,7 @@ fcdt_bad,  fcdt_overdue_bad, fcredit_mean_bad, fprevious):
     'NAME_FAMILY_STATUS_Civil marriage', 'NAME_FAMILY_STATUS_Married',
     'NAME_FAMILY_STATUS_Separated', 'NAME_FAMILY_STATUS_Single / not married',
     'NAME_FAMILY_STATUS_Widow', 'NAME_CONTRACT_TYPE_Cash loans',
-    'NAME_CONTRACT_TYPE_Revolving loans', 'OCCUPATION_TYPE_Accountants',
+    'NAME_CONTRACT_TYPE_Revolving loans', 'CODE_GENDER_M', 'OCCUPATION_TYPE_Accountants',
     'OCCUPATION_TYPE_Core staff', 'OCCUPATION_TYPE_Drivers',
     'OCCUPATION_TYPE_HR staff', 'OCCUPATION_TYPE_High skill tech staff',
     'OCCUPATION_TYPE_IT staff', 'OCCUPATION_TYPE_Laborers',
@@ -461,12 +462,14 @@ fcdt_bad,  fcdt_overdue_bad, fcredit_mean_bad, fprevious):
     tmp = {}
     for c in col:
         tmp[c] = [0]
+    tmp = pd.DataFrame(data=tmp)
     tmp['AMT_INCOME_TOTAL'] = fincome
     tmp["AMT_ANNUITY"] = fannuity
     tmp["AGE"] = fage
     tmp["YEARS_EMPLOYED"] = fyear
     tmp['OWN_CAR_AGE'] = fcar
     tmp['CNT_FAM_MEMBERS'] = fcnt_family
+    tmp['CODE_GENDER_M'] = val_sex
     tmp[val_edu] = 1
     tmp[val_fam_status] = 1
     tmp[val_contrat_type] = 1
@@ -483,7 +486,10 @@ fcdt_bad,  fcdt_overdue_bad, fcredit_mean_bad, fprevious):
     tmp['CREDIT_bad'] = fcdt_bad
     tmp['CREDIT_MEAN_OVERDUE_bad'] = fcdt_overdue_bad
     tmp['CREDIT_MEAN_bad'] = fcredit_mean_bad
-    return "dfalse: {}, dtrue: {}, range: {}".format(val_edu, val_contrat_type, fage)
+    #generate_table(tmp)
+    tmp.to_numpy()
+    mdl
+    return "{}: {}".format(fcdt_active,tmp['CREDIT_active'].iloc[0])
 
 
 
