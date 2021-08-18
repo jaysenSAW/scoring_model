@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+   <body>
+      <h2 style = "text-align: center;">Contact Form</h2>
+
+      {% for message in form.name.errors %}
+         <div>{{ message }}</div>
+      {% endfor %}
+
+
+      <form action = "http://localhost:5000/contact" method = post>
+         <fieldset>
+            <legend>Contact Form</legend>
+            {{ form.hidden_tag() }}
+
+            <div style = font-size:20px; font-weight:bold; margin-left:150px;>
+               {{ form.name.label }}<br>
+               {{ form.name }}
+               <br>
+
+               {{ form.Age.label }}<br>
+               {{ form.Age }}
+               <br>
+
+               {{ form.CNT_FAM_MEMBERS.label }}<br>
+               {{ form.CNT_FAM_MEMBERS }}
+               <br>
+
+
+               {{ form.YEARS_EMPLOYED.label }}<br>
+               {{ form.YEARS_EMPLOYED }}
+               <br>
+
+               {{ form.Age_car.label }}<br>
+               {{ form.Age_car }}
+               <br>
+
+               {{ form.AMT_income.label }}<br>
+               {{ form.AMT_income }}
+               <br>
+
+               {{ form.Loan_annuity.label }}<br>
+               {{ form.Loan_annuity }}
+               <br>
+               {{ form.CREDIT_active.label }}<br>
+               {{ form.CREDIT_active }}
+               <br>
+
+               {{ form.CREDIT_MEAN_active.label }}<br>
+               {{ form.CREDIT_MEAN_active }}
+               <br>
+
+               {{ form.CREDIT_MEAN_closed.label }}<br>
+               {{ form.CREDIT_MEAN_closed }}
+               <br>
+
+               {{ form.proportion_OVERDUE_closed.label }}<br>
+               {{ form.proportion_OVERDUE_closed }}
+               <br>
+
+               {{ form.previous_CREDIT.label }}<br>
+               {{ form.previous_CREDIT }}
+               <br>
+
+
+               {{ form.submit }}
+            </div>
+
+         </fieldset>
+      </form>
+   </body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+   <body>
+      <h2 style = "text-align: center;">Applicant Form</h2>
+
+      {% for message in form.Credit_ask.errors %}
+         <div>{{ message }}</div>
+      {% endfor %}
+
+
+      <form action = "http://localhost:5000/contact" method = post>
+         <fieldset>
+            <legend>Candidat's informations</legend>
+            {{ form.hidden_tag() }}
+
+            <div style = font-size:20px; font-weight:bold; margin-left:150px;>
+
+
+               {{ form.Credit_ask.label }}<br>
+               {{ form.Credit_ask }}
+               <br>
+
+               {{ form.AMT_income.label }}<br>
+               {{ form.AMT_income }}
+               <br>
+
+               {{ form.Age.label }}<br>
+               {{ form.Age }}
+               <br>
+
+               {{ form.CNT_FAM_MEMBERS.label }}<br>
+               {{ form.CNT_FAM_MEMBERS }}
+               <br>
+
+               {{ form.Age_car.label }}<br>
+               {{ form.Age_car }}
+               <br>
+
+               {{ form.CREDIT_active.label }}<br>
+               {{ form.CREDIT_active }}
+               <br>
+
+               {{ form.CREDIT_MEAN_active.label }}<br>
+               {{ form.CREDIT_MEAN_active }}
+               <br>
+
+               {{ form.CREDIT_MEAN_OVERDUE_closed.label }}<br>
+               {{ form.CREDIT_MEAN_OVERDUE_closed }}
+               <br>
+
+               {{ form.CREDIT_MEAN_closed.label }}<br>
+               {{ form.CREDIT_MEAN_closed }}
+               <br>
+
+               {{ form.proportion_OVERDUE_closed.label }}<br>
+               {{ form.proportion_OVERDUE_closed }}
+               <br>
+
+               {{ form.Years_refund.label }}<br>
+               {{ form.Years_refund }}
+               <br>
+
+<!--                 {{ form.Years_refund.label }}<br>
+               {{ form.Years_refund }}
+               <br>
+
+
+               {{ form.YEARS_EMPLOYED.label }}<br>
+               {{ form.YEARS_EMPLOYED }}
+               <br>
+
+-->
+
+               {{ form.submit }}
+            </div>
+
+         </fieldset>
+      </form>
+   </body>
+</html>
