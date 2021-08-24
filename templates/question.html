@@ -7,6 +7,15 @@
          <div>{{ message }}</div>
       {% endfor %}
 
+      {% for message in form.AMT_income.errors %}
+         <div>{{ message }}</div>
+      {% endfor %}
+
+      {% for message in form.proportion_OVERDUE_closed.errors %}
+         <div>{{ message }}</div>
+      {% endfor %}
+
+
 
       <form action = "http://localhost:5000/contact" method = post>
          <fieldset>
@@ -58,6 +67,10 @@
 
                {{ form.Years_refund.label }}<br>
                {{ form.Years_refund }}
+               <br>
+
+               {{ form.YEARS_EMPLOYED.label }}<br>
+               {{ form.YEARS_EMPLOYED }}
                <br>
 
 <!--                 {{ form.Years_refund.label }}<br>
