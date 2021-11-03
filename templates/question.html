@@ -18,6 +18,7 @@
 
 
       <form action = "http://localhost:5000/contact" method = post>
+        {{ form.csrf_token }}
          <fieldset>
             <legend>Candidat's informations</legend>
             {{ form.hidden_tag() }}
@@ -76,18 +77,21 @@
                {{ form.YEARS_EMPLOYED.label }}<br>
                {{ form.YEARS_EMPLOYED }}
                <br>
+               <legend>Education information</legend>
 
-<!--                 {{ form.Years_refund.label }}<br>
-               {{ form.Years_refund }}
-               <br>
+               <select name= "ed_id" method="GET" action="/">
+                   {% for ed in educations %}
+                   <option value= "{{ed}}" SELECTED>{{ed}}</option>"
+                   {% endfor %}
+               </select>
 
-
-               {{ form.YEARS_EMPLOYED.label }}<br>
-               {{ form.YEARS_EMPLOYED }}
-               <br>
-
--->
-
+               <legend>Job information</legend>
+               <select name= "job_id" method="GET" action="/">
+                   {% for job in job_type %}
+                   <option value= "{{job}}" SELECTED>{{job}}</option>"
+                   {% endfor %}
+               </select>
+               <p></p>
                {{ form.submit }}
             </div>
 

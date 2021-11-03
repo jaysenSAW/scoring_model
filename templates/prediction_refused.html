@@ -4,14 +4,65 @@
 <body style="font-family:arial, sans-serif">
     <form action = "http://localhost:5000/contact" method = post>
     <h1 style="background:red;padding:10px">
-      Credit refused:
+      Credit refused: Your score is {{ score }}
     </h1>
+    <p> Threshold acceptance is 50% </p>
+    <h2> Informations </h2>
+    <p> Candidat's studies: {{ education }} </p>
+    <p> Candidat's occupation: {{ job_type }} </p>
 
-    <h1><a href="contact">Back to the form</a></h1>
-    <h1><a href="summary_data">Customers's informations</a></h1>
+    <h1>Comparison against similar candidat</h1>
+    <p>Follow graphics show informations about candidats with similar job occupation and eudcation level</p>
 
+
+    <div class="row">
+        <h1>{{header}}</h1>
+        <p>Follow graphics show candidats with similar job occupation and eudcation level for accepeted and rejected credit.
+        It could help candidat to understand algorithm decision</p>
+        <div id="chart1" class="chart"></div>
+        <div>{{description[0]}}</div>
+    </div>
+    <div class="row">
+        <div id="chart2" class="chart"></div>
+        <div>{{description[1]}}</div>
+    </div>
+    <div class="row">
+        <div id="chart3" class="chart"></div>
+        <div>{{description[2]}}</div>
+    </div>
+    <div class="row">
+      <h1>Features impact in credits status</h1>
+      <img src="static/temp.jpg">
+      <p>Graphic represents features contribution in credits acceptance for all observations.
+        Credit is rejected when SHAP value is above 0 (X-axis).
+        The color range blue to red represents features values (high values have used warm colors)
+      </p>
+    </div>
+    <div class="row">
+      <h1>Contribution of candidat's features in decision</h1>
+      <img src="static/temp2.jpg">
+      <p>Graphic represents features contribution in credit decision for the candidat.
+      </p>
+    </div>
+    <!-- <h5><a href="/">Return to index page</a></h6> -->
+
+    <h5><a href="registered_customers">Back to the form for registered customer</a></h1>
+    <h5><a href="contact">Back to the form for new customer</a></h1>
+    <h5><a href="/">Home</a></h1>
 </body>
 
-
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script type="text/javascript">
+    var graphs = {{graphJSON[0] | safe}};
+    Plotly.plot('chart1',graphs,{});
+</script>
+<script type="text/javascript">
+    var graphs = {{graphJSON[1] | safe}};
+    Plotly.plot('chart2',graphs,{});
+</script>
+<script type="text/javascript">
+    var graphs = {{graphJSON[2] | safe}};
+    Plotly.plot('chart3',graphs,{});
+</script>
 
 </html>
