@@ -28,6 +28,7 @@ mdl = pickle.load(open("data/tree_decision", "rb"))
 global explainer
 explainer = pickle.load(open("data/explainer_shap_tree", "rb"))
 
+
 global feat
 feat = ['AMT_INCOME_TOTAL',
  'AMT_ANNUITY',
@@ -44,15 +45,18 @@ feat = ['AMT_INCOME_TOTAL',
  'Number_years_Loan_Theorical',
  'INCOME_ANNUITY_RATIO',
  'CNT_FAM_MEMBERS']
-#clean folder
-#if os.path.isfile("data/customer_info.csv"):
-#    os.remove("data/customer_info.csv")
-#    print("File Removed!")
+
 
 global df
 global shap_values
 df = pd.read_csv('data/clean_data2.csv')
 df = df.sample(n=5000, random_state=42)
+
+global df_candidats
+df_candidats = pd.read_csv('data/register_customer_test.csv')
+df_candidats = df_candidats.sort_values(by=['SK_ID_CURR'])
+
+global user_data #customer info
 
 Xtest = df[feat].to_numpy()
 shap_values = explainer.shap_values(Xtest, check_additivity=False)
@@ -86,14 +90,13 @@ class ContactForm(Form):
     proportion_OVERDUE_closed = FloatField("Ratio of credit with overdue",
     validators=[NumberRange(min=0, max=1, message='Number between  0 and 1 is \
     expected Ratio of credit with overdue')])
-    #env = os.getcwd()
-    #print(env)
-    #if env.split("\")[2] == 'jayse':
-    #    env='http://localhost:5000/contact'
-    #else:
-    #    env='http://jaysen.pythonanywhere.com/contact'
     submit = SubmitField("Send")
 
+class RegisteredForm(Form):
+    # ID_customers = FloatField("ID_customers", validators=[NumberRange(min=10000, message='Customer id')])
+    Credit_ask = FloatField("Credit ask", validators=[NumberRange(min=1000, message="plus d'argent" )])
+    Years_refund = FloatField("Number of years for payment credit", validators=[NumberRange(min=0)])
+    # submit = SubmitField("Send")
 
 app = Flask(__name__)
 app.secret_key = 'development key'
@@ -126,6 +129,19 @@ def init_url():
         for file in files:
             change_url(file)
 
+def shap_values_candidat(dt):
+    Xtest2 = dt.to_numpy()
+    shap_values2 = explainer.shap_values(dt.to_numpy())
+    print('shap graphic for customer')
+    if os.path.exists("static/temp2.jpg"):
+        print(("remove file"))
+        os.remove("static/temp2.jpg")
+    shap.force_plot(
+    explainer.expected_value, shap_values2[0,:], Xtest2[0,:],
+    feature_names=dt.columns, show=False, matplotlib=True
+    ).savefig('static/temp2.jpg')
+    print("image saved")
+
 
 def predict_credit(data):
     AMT_income = np.log10(float(data['AMT_income']) + 1)
@@ -149,9 +165,10 @@ def predict_credit(data):
     CREDIT_active, CREDIT_MEAN_OVERDUE_active, CREDIT_MEAN_active,
     CREDIT_MEAN_OVERDUE_closed, CREDIT_MEAN_closed, proportion_OVERDUE_closed,
     Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS])
+    print("***DATA FRAME FOR NEW CUSTOMER***")
     print(dt)
-    y_pred = mdl.predict(dt.reshape(1, -1))
-    print("Result for credit {0}".format(y_pred))
+    y_pred = mdl.predict_proba(dt.reshape(1, -1))[0][1]
+    print("score for reject credit {0}".format(y_pred))
     data = {"AMT_INCOME_TOTAL" : [float(data['AMT_income'])],
     "AMT_ANNUITY" : [tmp],
     "AGE" : [Age],
@@ -169,24 +186,109 @@ def predict_credit(data):
     "CNT_FAM_MEMBERS" : [CNT_FAM_MEMBERS] }
     dt = pd.DataFrame(data)
     dt.to_csv("data/customer_info.csv")
+    shap_values_candidat(dt)
     ###################################
-    Xtest2 = dt.to_numpy()
-    #shap.initjs()
-    #figure = plt.gcf()
-    shap_values2 = explainer.shap_values(dt.to_numpy())
-    shap.force_plot(
-    explainer.expected_value, shap_values2[0,:], Xtest2[0,:],
-    feature_names=dt.columns, show=False, matplotlib=True
-    ).savefig('static/temp2.jpg')
     #shap.summary_plot(shap_values, dt.to_numpy(), feature_names=feat, show=False)
     #figure.set_size_inches(8, 8)
     #plt.savefig(fname = "static/temp2.jpg", dpi = 100, pad_inches = 0, bbox_inches='tight')
     #plt.close()
-    return y_pred[0]
+    return y_pred
 
 
+@app.route('/')
+def index():
+    #init_url()
+    return render_template('index.html')
 
-def pieplot_familly():
+def close_candidats(df_candidats, id):
+    """
+    Return subdataframe with individu similar to the candidat.
+    Arguments:
+        df_candidats: dataframe with all individus
+        id: candidat's id
+    Return:
+        sub dataframe
+    """
+    tmp = df_candidats[df_candidats["SK_ID_CURR"] == id]
+    val = []
+    col_name = []
+    for col in df_candidats.filter(regex=("NAME_EDUCATION.*")).columns:
+      col_name.append(col)
+      val.append(tmp[col].to_numpy()[0])
+    for col in df_candidats.filter(regex=("OCCUPATION_TYPE.*")).columns:
+      col_name.append(col)
+      val.append(tmp[col].to_numpy()[0])
+    tmp_df = df_candidats[
+    (df_candidats[col_name[0]] == val[0]) &
+    (df_candidats[col_name[1]] == val[1]) &
+    (df_candidats[col_name[2]] == val[2]) &
+    (df_candidats[col_name[3]] == val[3]) &
+    (df_candidats[col_name[4]] == val[4]) &
+    (df_candidats[col_name[5]] == val[5]) &
+    (df_candidats[col_name[6]] == val[6]) &
+    (df_candidats[col_name[7]] == val[7]) &
+    (df_candidats[col_name[8]] == val[8]) &
+    (df_candidats[col_name[9]] == val[9]) &
+    (df_candidats[col_name[10]] == val[10]) &
+    (df_candidats[col_name[11]] == val[11]) &
+    (df_candidats[col_name[12]] == val[12]) &
+    (df_candidats[col_name[13]] == val[13]) &
+    (df_candidats[col_name[14]] == val[14]) &
+    (df_candidats[col_name[15]] == val[15]) &
+    (df_candidats[col_name[16]] == val[16])
+      ]
+    tmp_df.to_csv("data/sub_df.csv")
+    return tmp_df
+
+def score_credit(dt, credit_ask, Years_refund):
+    data = dt.copy()
+    AMT_income = np.log10(float(data['AMT_INCOME_TOTAL']) + 1)
+    Credit_ask = np.log10(credit_ask + 1)
+    Years_refund = float(Years_refund)
+    tmp_annuity = credit_ask/Years_refund
+    Loan_annuity = np.log10(tmp_annuity + 1)
+    INCOME_ANNUITY_RATIO = float(data['AMT_INCOME_TOTAL'])/tmp_annuity
+    Age = float(data['AGE'])
+    Employed = float(data['YEARS_EMPLOYED'])
+    Age_car = float(data['OWN_CAR_AGE'])
+    CREDIT_active = float(data['CREDIT_active'])
+    CREDIT_MEAN_OVERDUE_active = np.log10(float(data['CREDIT_MEAN_active']) + 1)
+    CREDIT_MEAN_active = np.log10(float(data['CREDIT_MEAN_active']) + 1)
+    CREDIT_MEAN_OVERDUE_closed = float(data['CREDIT_MEAN_OVERDUE_closed'])
+    CREDIT_MEAN_closed = np.log10(float(data['CREDIT_MEAN_closed']) + 1)
+    proportion_OVERDUE_closed = float(data['proportion_OVERDUE_closed'])
+    CNT_FAM_MEMBERS = float(data['CNT_FAM_MEMBERS'])
+    dt_tmp = np.array([AMT_income, Loan_annuity, Age, Employed, Age_car,
+    CREDIT_active, CREDIT_MEAN_OVERDUE_active, CREDIT_MEAN_active,
+    CREDIT_MEAN_OVERDUE_closed, CREDIT_MEAN_closed, proportion_OVERDUE_closed,
+    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS])
+    print(dt_tmp)
+    y_pred = mdl.predict_proba(dt_tmp.reshape(1, -1))[0][1]
+    col = ["AMT_income", "Loan_annuity", "Age", "Employed", "Age_car",
+    "CREDIT_active", "CREDIT_MEAN_OVERDUE_active", "CREDIT_MEAN_active",
+    "CREDIT_MEAN_OVERDUE_closed", "CREDIT_MEAN_closed", "proportion_OVERDUE_closed",
+    "Credit_ask", "Years_refund", "INCOME_ANNUITY_RATIO", "CNT_FAM_MEMBERS"]
+    print(len(col))
+    dt_tmp = pd.DataFrame(data = [dt_tmp], columns = col)
+    return y_pred, dt_tmp
+    # return y_pred, pd.DataFrame(data = dt_tmp, columns = ["AMT INCOME TOTAL",
+    # "Loan annuity", "Age", "Year employed", "Age car", "CREDIT active",
+    # "CREDIT_MEAN_OVERDUE_active", "CREDIT MEAN_OVERDUE closed"])
+
+def give_edu_job(user_data):
+    education = "NAME_EDUCATION_TYPE_Other"
+    for ed in user_data.filter(regex=("NAME_EDUCATION.*")).columns:
+        if user_data[ed].to_numpy()[0] == 1:
+            education = ed
+    print(education)
+    job_type = "OCCUPATION_TYPE_Other"
+    for job in user_data.filter(regex=("OCCUPATION_TYPE.*")).columns:
+        if user_data[job].to_numpy()[0] == 1:
+            job_type = job
+    print(job_type)
+    return education, job_type
+
+def pieplot_familly(df = df):
     val = df[df["TARGET"] == 1]["CNT_FAM_MEMBERS"].value_counts(normalize=True)*100
     # Create subplots: use 'domain' type for Pie subplot
     fig = make_subplots(rows=1, cols=2, specs=[[{'type':'domain'}, {'type':'domain'}]])
@@ -206,7 +308,7 @@ def pieplot_familly():
     #fig.show()
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
-def hist_income():
+def hist_income(df = df):
     fig = go.Figure()
     fig.add_trace(go.Histogram(
         x=df[df["TARGET"] == 1]["INCOME_ANNUITY_RATIO"].values,
@@ -225,7 +327,7 @@ def hist_income():
     fig.update_traces(opacity=0.7)
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
-def plot_ratio():
+def plot_ratio(df = df):
         fig = px.scatter(df, x = "AMT_ANNUITY" , y = "INCOME_ANNUITY_RATIO", color="TARGET")
         fig.update_traces(opacity=0.7)
         #fig.show()
@@ -243,88 +345,119 @@ def plot_ratio():
         fig.update_traces(opacity=0.7)
         return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
-@app.route('/')
-def index():
-    #init_url()
-    return render_template('index.html')
 
-
-
-
-@app.route('/contact', methods = ['GET', 'POST'])
-def contact():
-    form = ContactForm()
-    if request.method == 'POST':
-        if form.validate() == False:
-            flash('All fields are required.')
-            return render_template('question.html', form = form)
-        else:
-            print("ok")
-            data = request.form.to_dict()
-            print(data)
-            if predict_credit(data) == 1:
-                return render_template('prediction_refused.html', form = form)
-            else:
-                return render_template('prediction_accepted.html', form = form)
-    elif request.method == 'GET':
-        return render_template('question.html', form = form)
-
-
-@app.route('/familly')
-def chart2():
-    graphJSON = pieplot_familly()
-    header="Number of familly member"
-    if dt is None:
-        description = """
-        Credit's criterions depands on many features these charts show differences between accepted and rejected credits.
-        """
-    else:
-        description = "Credit's criterions depands on many features these charts show differences between accepted and rejected credits.\
-In according to form customer has {0} member(s).".format(dt["CNT_FAM_MEMBERS"])
-    return render_template('summary.html', graphJSON=graphJSON, header=header,description=description)
-
-
-@app.route('/income')
-def income_plot():
-    histJSON = hist_income()
-    header="Income annuity ratio distribution for customer with accepted or rejected credit"
-    description = ""
-    return render_template('summary.html', graphJSON=histJSON, header=header,description=description)
-
-
-@app.route('/income_loan_ratio')
-def income_loan_ratio():
-    scatterJSON = plot_ratio()
-    header="Annuity loan is high and correlated with income annuity ratio"
-    description = ""
-    return render_template('summary.html', graphJSON=scatterJSON, header=header,description=description)
-
-@app.route('/summary_data')
-def summary_data_info():
-    graphJSON = pieplot_familly()
-    header="Data summary"
-    histJSON = hist_income()
+def summary_data_info(dataFrame):
+    graphJSON = pieplot_familly(dataFrame)
+    header="Comparison against similar candidat"
+    histJSON = hist_income(dataFrame)
     description1 = "Income "
-    scatterJSON = plot_ratio()
+    scatterJSON = plot_ratio(dataFrame)
     if os.path.isfile("data/customer_info.csv"):
         print("add customer point !")
         new_dt = pd.read_csv('data/customer_info.csv')
-        description1 = "Rejected loan are more present for \
-        familly with more than 4 member. You have {0:.1f} members".format(new_dt.loc[0, "CNT_FAM_MEMBERS"])
+        description1 = "You have {0:.1f} members".format(new_dt.loc[0, "CNT_FAM_MEMBERS"])
         description2 = "Ratio income/loan annuity is important to determine \
         if candidate can pay its loans. Your ratio is {0:.2f}".format(new_dt.loc[0,"INCOME_ANNUITY_RATIO"])
         description3 = "Income distribution for accepted and rejected candidats.\
         Your income is {0:.2f}".format(new_dt.loc[0,"AMT_INCOME_TOTAL"])
     else:
         description1 = "Rejected loan are more present for familly with more than 4 member"
-        description2 = "Ratio income/loan annuity is important to determine if candidate can pay its loans"
+        description2 = "Ratio income/loan annuity inform how loan could impact candidate's purchasing power.\n\
+        Ratio bellow 1 means loan annuity is more important than total income. higher is the ration and more flexibility has the candidate."
         description3 = "Income distribution for accepted and rejected candidats"
-    return render_template('summary_data.html', graphJSON=[graphJSON, scatterJSON, histJSON], header=header,description=[description1, description2, description3])
+    return [graphJSON, scatterJSON, histJSON], header, [description1, description2, description3]
+
+def parse_data(request, df_candidats):
+    """
+    Parse registered_customers.html and return customer data
+    Arguments
+        request: wtforms flask object
+        df_candidats: dataframe with all customers
+    """
+    users_id = int(request.form.to_dict()["users_id"])
+    credit_ask = float(request.form.to_dict()['Credit_ask'])
+    Years_refund = float(request.form.to_dict()['Years_refund'])
+    # ID_customers = float(request.form.to_dict()['ID_customers'])
+    print(request.form.to_dict()) #all informations
+    # print(ID_customers, users_id)
+    user_data = df_candidats[df_candidats["SK_ID_CURR"] == users_id]
+    user_data.to_csv("data/customer_info.csv")
+    #return score model and customer's dataframe with 15 features
+    score, user_data_shap = score_credit(user_data, credit_ask, Years_refund)
+    shap_values_candidat(user_data_shap)
+    sub_df = close_candidats(df_candidats, users_id)
+    return user_data, score, sub_df
+
+@app.route('/registered_customers', methods = ['GET', 'POST'])
+def registered_customer():
+    print("*"*100)
+    form = RegisteredForm()
+    users = df_candidats.iloc[0:500, 0].tolist()
+    if request.method != 'POST':
+        print("method is not post")
+        return render_template('registered_customers.html', form = form, users = users)
+    if form.validate() == False:
+        flash('All fields are required.')
+        return render_template('registered_customers.html', form = form, users = users)
+    print("method is post")
+    user_data, score, sub_df = parse_data(request, df_candidats)
+    education, job_type = give_edu_job(user_data)
+    print(education)
+    graphJSON, header, description = summary_data_info(sub_df)
+    if score >= 0.5:
+        print("score > 0.5")
+        return render_template('prediction_refused.html',
+        form = form, education = education, job_type = job_type,
+        graphJSON=graphJSON, header=header, description = description ,
+        score = np.round(score*100,2))
+    print("score < 0.5")
+    return render_template('prediction_accepted.html',
+    form = form, education = education, job_type = job_type,
+    graphJSON=graphJSON, header=header, description = description ,
+    score = np.round(score*100,2))
 
 
-@app.route("/test_shap")
-def cusomer_data():
-    return render_template('index.html')
+def close_candidats2(df_candidats, request):
+    tmp_df = df_candidats[
+    (df_candidats[request.form.to_dict()["ed_id"]] == 1) &
+    (df_candidats[request.form.to_dict()["job_id"]] == 1)
+    ]
+    tmp_df.to_csv("data/sub_df.csv")
+    tmp_df.to_csv("data/sub_df.csv")
+    return tmp_df
+
+@app.route('/contact', methods = ['GET', 'POST'])
+def contact():
+    form = ContactForm()
+    educations = df_candidats.filter(regex=("NAME_EDUCATION.*")).columns
+    job_type = df_candidats.filter(regex=("OCCUPATION_TYPE.*")).columns
+    if request.method == 'POST':
+        if form.validate() == False:
+            flash('All fields are required.')
+            return render_template('question.html', form = form,
+            educations = educations, job_type = job_type)
+        else:
+            sub_df = close_candidats2(df_candidats, request)
+            print("form validated !")
+            data = request.form.to_dict()
+            print(data)
+            score = predict_credit(data)
+            graphJSON, header, description = summary_data_info(sub_df)
+            education = request.form.to_dict()["ed_id"]
+            job_type = request.form.to_dict()["job_id"]
+            if score >= 0.5:
+                return render_template('prediction_refused.html',
+                form = form, education = education, job_type = job_type,
+                graphJSON=graphJSON, header=header, description = description ,
+                score = np.round(score*100,2))
+            else:
+                return render_template('prediction_accepted.html', form = form,
+                score = np.round(score*100,2))
+    elif request.method == 'GET':
+        return render_template('question.html', form = form,
+        educations = educations, job_type = job_type)
+
+
 
 if __name__ == '__main__':
    app.run(debug = True)
