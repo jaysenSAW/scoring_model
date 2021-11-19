@@ -11,28 +11,36 @@
     <p> Candidat's studies: {{ education }} </p>
     <p> Candidat's occupation: {{ job_type }} </p>
 
-
+    <h1>{{header}}</h1>
+    <p>Follow graphics show candidats with similar job occupation and eudcation level for accepeted and rejected credit</p>
+    <p>It could help candidat to understand algorithm decision</p>
     <div class="row">
-        <h1>{{header}}</h1>
-        <p>Follow graphics show candidats with similar job occupation and eudcation level for accepeted and rejected credit</p>
-        <p>It could help candidat to understand algorithm decision</p>
+        <h1>Familly repartition</h1>
         <div id="chart1" class="chart"></div>
         <div>{{description[0]}}</div>
     </div>
     <div class="row">
+        <h1>Candidats's age</h1>
+        <div id="chart4" class="chart"></div>
+        <div>{{description[3]}}</div>
+    </div>
+    <div class="row">
+        <h1>Income and loans repartition</h1>
         <div id="chart2" class="chart"></div>
         <div>{{description[1]}}</div>
     </div>
     <div class="row">
+        <h1>Impact of loans</h1>
         <div id="chart3" class="chart"></div>
         <div>{{description[2]}}</div>
     </div>
+
     <div class="row">
       <h1>Features impact in credits status</h1>
       <img src="static/temp.jpg">
       <p>Graphic represents features contribution in credits acceptance for all observations.
         Credit is rejected when SHAP value is above 0 (X-axis).
-        The color range blue to red represents features values (high values have used warm colors)
+        The color range blue to red represents features values (high values have warm colors)
       </p>
     </div>
     <div class="row">
@@ -60,6 +68,11 @@
 <script type="text/javascript">
     var graphs = {{graphJSON[2] | safe}};
     Plotly.plot('chart3',graphs,{});
+</script>
+
+<script type="text/javascript">
+    var graphs = {{graphJSON[3] | safe}};
+    Plotly.plot('chart4',graphs,{});
 </script>
 
 </html>

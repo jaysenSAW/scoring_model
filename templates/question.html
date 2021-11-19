@@ -42,8 +42,8 @@
                {{ form.CNT_FAM_MEMBERS }}
                <br>
 
-               {{ form.Age_car.label }}<br>
-               {{ form.Age_car }}
+               {{ form.proportion_OVERDUE_active.label }}<br>
+               {{ form.proportion_OVERDUE_active }}
                <br>
 
                {{ form.CREDIT_active.label }}<br>
@@ -77,6 +77,14 @@
                {{ form.YEARS_EMPLOYED.label }}<br>
                {{ form.YEARS_EMPLOYED }}
                <br>
+               <legend>Cash contract type</legend>
+               <select name= "NAME_CONTRACT_TYPE_Cash_loans" method="GET" action="/">
+                   {% for flag in [0,1] %}
+                   <option value= "{{flag}}" SELECTED>{{flag}}</option>"
+                   {% endfor %}
+               </select>
+
+
                <legend>Education information</legend>
 
                <select name= "ed_id" method="GET" action="/">
