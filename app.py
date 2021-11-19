@@ -504,7 +504,7 @@ def contact():
                 score = round(score*100,2))
             else:
                 return render_template('prediction_accepted.html', form = form,
-                score = round(score*100,2)
+                score = round(score*100,2))
     elif request.method == 'GET':
         return render_template('question.html', form = form,
         educations = educations, job_type = job_type)
