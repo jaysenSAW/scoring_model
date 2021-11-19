@@ -7,7 +7,8 @@ from wtforms import validators, ValidationError
 from wtforms.validators import NumberRange
 from wtforms.validators import DataRequired
 import pandas as pd
-import numpy as np
+#import numpy as np
+import math
 import json
 import plotly
 import plotly.express as px
@@ -34,10 +35,11 @@ feat = ['AMT_INCOME_TOTAL',
  'AMT_ANNUITY',
  'AGE',
  'YEARS_EMPLOYED',
- 'OWN_CAR_AGE',
+ 'NAME_CONTRACT_TYPE_Cash loans',
  'CREDIT_active',
  'CREDIT_MEAN_OVERDUE_active',
  'CREDIT_MEAN_active',
+ 'proportion_OVERDUE_active',
  'CREDIT_MEAN_OVERDUE_closed',
  'CREDIT_MEAN_closed',
  'proportion_OVERDUE_closed',
@@ -49,7 +51,7 @@ feat = ['AMT_INCOME_TOTAL',
 
 global df
 global shap_values
-df = pd.read_csv('data/clean_data2.csv')
+df = pd.read_csv('data/register_customer_test.csv')
 df = df.sample(n=5000, random_state=42)
 
 global df_candidats
@@ -79,7 +81,8 @@ class ContactForm(Form):
     message='Income above 0 is expected')])
     Years_refund = FloatField("Number of years for payment credit")
     Age = FloatField("Age")
-    Age_car = FloatField("Car's age")
+    proportion_OVERDUE_active = FloatField('proportion_OVERDUE_active')
+    NAME_CONTRACT_TYPE_Cash_loans = FloatField("NAME_CONTRACT_TYPE_Cash_loans")
     YEARS_EMPLOYED = FloatField("Years of Employment")
     CNT_FAM_MEMBERS = FloatField("Number of familly")
     CREDIT_active = FloatField("Number of current credit")
@@ -143,37 +146,51 @@ def shap_values_candidat(dt):
     print("image saved")
 
 
+
 def predict_credit(data):
-    AMT_income = np.log10(float(data['AMT_income']) + 1)
-    Credit_ask = np.log10(float(data['Credit_ask']) + 1)
+    print(data.keys())
+    #transform some features by using log10
+    AMT_income = math.log10(float(data['AMT_income']) + 1)
+    Credit_ask = math.log10(float(data['Credit_ask']) + 1)
     Years_refund = float(data['Years_refund'])
     tmp = float(data['Credit_ask'])/Years_refund
-    Loan_annuity = np.log10(tmp + 1)
+    Loan_annuity = math.log10(tmp + 1)
     INCOME_ANNUITY_RATIO = float(data['AMT_income'])/tmp
     Age = float(data['Age'])
     Employed = float(data['YEARS_EMPLOYED'])
-    Age_car = float(data['Age_car'])
+    proportion_OVERDUE_active = float(data['proportion_OVERDUE_active'])
     CREDIT_active = float(data['CREDIT_active'])
-    CREDIT_MEAN_OVERDUE_active = np.log10(float(data['CREDIT_MEAN_active']) + 1)
-    CREDIT_MEAN_active = np.log10(float(data['CREDIT_MEAN_active']) + 1)
+    CREDIT_MEAN_OVERDUE_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
+    CREDIT_MEAN_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
     CREDIT_MEAN_OVERDUE_closed = float(data['CREDIT_MEAN_OVERDUE_closed'])
-    CREDIT_MEAN_closed = np.log10(float(data['CREDIT_MEAN_closed']) + 1)
+    CREDIT_MEAN_closed = math.log10(float(data['CREDIT_MEAN_closed']) + 1)
     proportion_OVERDUE_closed = float(data['proportion_OVERDUE_closed'])
     CNT_FAM_MEMBERS = float(data['CNT_FAM_MEMBERS'])
+    NAME_CONTRACT_TYPE_Cash_loans = float(data['NAME_CONTRACT_TYPE_Cash_loans'])
     global dt
-    dt = np.array([AMT_income, Loan_annuity, Age, Employed, Age_car,
-    CREDIT_active, CREDIT_MEAN_OVERDUE_active, CREDIT_MEAN_active,
+    dt = [AMT_income, Loan_annuity, Age, Employed,
+    NAME_CONTRACT_TYPE_Cash_loans,
+    CREDIT_active, CREDIT_MEAN_OVERDUE_active,
+    CREDIT_MEAN_active, proportion_OVERDUE_active,
     CREDIT_MEAN_OVERDUE_closed, CREDIT_MEAN_closed, proportion_OVERDUE_closed,
-    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS])
+    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS]
     print("***DATA FRAME FOR NEW CUSTOMER***")
     print(dt)
     y_pred = mdl.predict_proba(dt.reshape(1, -1))[0][1]
     print("score for reject credit {0}".format(y_pred))
+    #save raw data
+    dt = [AMT_income, Loan_annuity, Age, Employed,
+    NAME_CONTRACT_TYPE_Cash_loans,
+    CREDIT_active, CREDIT_MEAN_OVERDUE_active,
+    CREDIT_MEAN_active, proportion_OVERDUE_active,
+    CREDIT_MEAN_OVERDUE_closed, CREDIT_MEAN_closed, proportion_OVERDUE_closed,
+    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS]
     data = {"AMT_INCOME_TOTAL" : [float(data['AMT_income'])],
     "AMT_ANNUITY" : [tmp],
     "AGE" : [Age],
     "YEARS_EMPLOYED" : [Employed],
-    "OWN_CAR_AGE" : [Age_car],
+    "NAME_CONTRACT_TYPE_Cash loans" : [NAME_CONTRACT_TYPE_Cash_loans],
+    "proportion_OVERDUE_active" : [proportion_OVERDUE_active],
     "CREDIT_active" : [CREDIT_active],
     "CREDIT_MEAN_OVERDUE_active": [float(CREDIT_MEAN_OVERDUE_active)],
     "CREDIT_MEAN_active" : [float(data['CREDIT_MEAN_active'])],
@@ -241,31 +258,40 @@ def close_candidats(df_candidats, id):
     return tmp_df
 
 def score_credit(dt, credit_ask, Years_refund):
+    print("*"*50)
+    print("Compute score")
+    print(dt.keys())
     data = dt.copy()
-    AMT_income = np.log10(float(data['AMT_INCOME_TOTAL']) + 1)
-    Credit_ask = np.log10(credit_ask + 1)
+    AMT_income = math.log10(float(data['AMT_INCOME_TOTAL']) + 1)
+    Credit_ask = math.log10(credit_ask + 1)
     Years_refund = float(Years_refund)
     tmp_annuity = credit_ask/Years_refund
-    Loan_annuity = np.log10(tmp_annuity + 1)
+    Loan_annuity = math.log10(tmp_annuity + 1)
     INCOME_ANNUITY_RATIO = float(data['AMT_INCOME_TOTAL'])/tmp_annuity
     Age = float(data['AGE'])
     Employed = float(data['YEARS_EMPLOYED'])
-    Age_car = float(data['OWN_CAR_AGE'])
+    NAME_CONTRACT_TYPE_Cash_loans = float(data['NAME_CONTRACT_TYPE_Cash loans'])
+    proportion_OVERDUE_active = float(data['proportion_OVERDUE_active']),
+    print("proportion_OVERDUE_active")
+    print(type(proportion_OVERDUE_active))
     CREDIT_active = float(data['CREDIT_active'])
-    CREDIT_MEAN_OVERDUE_active = np.log10(float(data['CREDIT_MEAN_active']) + 1)
-    CREDIT_MEAN_active = np.log10(float(data['CREDIT_MEAN_active']) + 1)
+    CREDIT_MEAN_OVERDUE_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
+    CREDIT_MEAN_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
     CREDIT_MEAN_OVERDUE_closed = float(data['CREDIT_MEAN_OVERDUE_closed'])
-    CREDIT_MEAN_closed = np.log10(float(data['CREDIT_MEAN_closed']) + 1)
+    CREDIT_MEAN_closed = math.log10(float(data['CREDIT_MEAN_closed']) + 1)
     proportion_OVERDUE_closed = float(data['proportion_OVERDUE_closed'])
     CNT_FAM_MEMBERS = float(data['CNT_FAM_MEMBERS'])
-    dt_tmp = np.array([AMT_income, Loan_annuity, Age, Employed, Age_car,
-    CREDIT_active, CREDIT_MEAN_OVERDUE_active, CREDIT_MEAN_active,
-    CREDIT_MEAN_OVERDUE_closed, CREDIT_MEAN_closed, proportion_OVERDUE_closed,
-    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS])
+    dt_tmp = [AMT_income, Loan_annuity, Age, Employed,
+    NAME_CONTRACT_TYPE_Cash_loans, CREDIT_active, CREDIT_MEAN_OVERDUE_active,
+    CREDIT_MEAN_active, proportion_OVERDUE_active[0], CREDIT_MEAN_OVERDUE_closed,
+    CREDIT_MEAN_closed, proportion_OVERDUE_closed,
+    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS]
     print(dt_tmp)
+    print("9*9"*50)
     y_pred = mdl.predict_proba(dt_tmp.reshape(1, -1))[0][1]
-    col = ["AMT_income", "Loan_annuity", "Age", "Employed", "Age_car",
-    "CREDIT_active", "CREDIT_MEAN_OVERDUE_active", "CREDIT_MEAN_active",
+    col = ["AMT_income", "Loan_annuity", "Age", "Employed", "NAME_CONTRACT_TYPE_Cash_loans",
+    "CREDIT_active", "CREDIT_MEAN_OVERDUE_active",
+    "CREDIT_MEAN_active", "proportion_OVERDUE_active",
     "CREDIT_MEAN_OVERDUE_closed", "CREDIT_MEAN_closed", "proportion_OVERDUE_closed",
     "Credit_ask", "Years_refund", "INCOME_ANNUITY_RATIO", "CNT_FAM_MEMBERS"]
     print(len(col))
@@ -306,6 +332,25 @@ def pieplot_familly(df = df):
         annotations=[dict(text='Rejected', x=0.17, y=0.5, font_size=20, showarrow=False),
                      dict(text='Accepted', x=0.835, y=0.5, font_size=20, showarrow=False)])
     #fig.show()
+    return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+
+def hist_age(df = df):
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(
+        x=df[df["TARGET"] == 1]["AGE"].values,
+        histnorm='probability density',
+        name='Rejected'))
+    fig.add_trace(go.Histogram(
+        x=df[df["TARGET"] == 0]["AGE"].values,
+        histnorm='probability density',
+        name='Accepted'))
+    # Overlay both histograms
+    fig.update_layout(barmode='overlay',
+                     title_text="Candidats's age density plot",
+                     xaxis_title_text='Age',
+                     yaxis_title_text= 'Probabily density')
+    # Reduce opacity to see both histograms
+    fig.update_traces(opacity=0.7)
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 def hist_income(df = df):
@@ -349,23 +394,27 @@ def plot_ratio(df = df):
 def summary_data_info(dataFrame):
     graphJSON = pieplot_familly(dataFrame)
     header="Comparison against similar candidat"
+    histAge = hist_age(dataFrame)
     histJSON = hist_income(dataFrame)
     description1 = "Income "
     scatterJSON = plot_ratio(dataFrame)
+
     if os.path.isfile("data/customer_info.csv"):
         print("add customer point !")
         new_dt = pd.read_csv('data/customer_info.csv')
-        description1 = "You have {0:.1f} members".format(new_dt.loc[0, "CNT_FAM_MEMBERS"])
+        description1 = "You have {0:.1f} members in your familly".format(new_dt.loc[0, "CNT_FAM_MEMBERS"])
         description2 = "Ratio income/loan annuity is important to determine \
         if candidate can pay its loans. Your ratio is {0:.2f}".format(new_dt.loc[0,"INCOME_ANNUITY_RATIO"])
         description3 = "Income distribution for accepted and rejected candidats.\
         Your income is {0:.2f}".format(new_dt.loc[0,"AMT_INCOME_TOTAL"])
+        description4 = "Candidat is {0:.1f} years old".format(new_dt.loc[0, "AGE"])
     else:
         description1 = "Rejected loan are more present for familly with more than 4 member"
         description2 = "Ratio income/loan annuity inform how loan could impact candidate's purchasing power.\n\
         Ratio bellow 1 means loan annuity is more important than total income. higher is the ration and more flexibility has the candidate."
         description3 = "Income distribution for accepted and rejected candidats"
-    return [graphJSON, scatterJSON, histJSON], header, [description1, description2, description3]
+        description4 = "Candidats's age distribution for accepted and rejected candidats"
+    return [graphJSON, scatterJSON, histJSON, histAge], header, [description1, description2, description3, description4]
 
 def parse_data(request, df_candidats):
     """
@@ -378,10 +427,13 @@ def parse_data(request, df_candidats):
     credit_ask = float(request.form.to_dict()['Credit_ask'])
     Years_refund = float(request.form.to_dict()['Years_refund'])
     # ID_customers = float(request.form.to_dict()['ID_customers'])
+    print("*****all informations*****")
     print(request.form.to_dict()) #all informations
     # print(ID_customers, users_id)
     user_data = df_candidats[df_candidats["SK_ID_CURR"] == users_id]
+    print("*****LOAD USER*****")
     user_data.to_csv("data/customer_info.csv")
+    print("*****USER LOADED*****")
     #return score model and customer's dataframe with 15 features
     score, user_data_shap = score_credit(user_data, credit_ask, Years_refund)
     shap_values_candidat(user_data_shap)
@@ -409,12 +461,12 @@ def registered_customer():
         return render_template('prediction_refused.html',
         form = form, education = education, job_type = job_type,
         graphJSON=graphJSON, header=header, description = description ,
-        score = np.round(score*100,2))
+        score = round(score*100,2)
     print("score < 0.5")
     return render_template('prediction_accepted.html',
     form = form, education = education, job_type = job_type,
     graphJSON=graphJSON, header=header, description = description ,
-    score = np.round(score*100,2))
+    score = round(score*100,2))
 
 
 def close_candidats2(df_candidats, request):
@@ -449,10 +501,10 @@ def contact():
                 return render_template('prediction_refused.html',
                 form = form, education = education, job_type = job_type,
                 graphJSON=graphJSON, header=header, description = description ,
-                score = np.round(score*100,2))
+                score = round(score*100,2))
             else:
                 return render_template('prediction_accepted.html', form = form,
-                score = np.round(score*100,2))
+                score = round(score*100,2)
     elif request.method == 'GET':
         return render_template('question.html', form = form,
         educations = educations, job_type = job_type)
