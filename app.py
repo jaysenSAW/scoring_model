@@ -83,19 +83,17 @@ class ContactForm(Form):
     message='Income above 0 is expected')])
     Years_refund = FloatField("Number of years for payment credit")
     Age = FloatField("Age")
-    Age_car = FloatField("Car's age")
-    proportion_OVERDUE_active = FloatField('proportion_OVERDUE_active')
-    NAME_CONTRACT_TYPE_Cash_loans = FloatField("NAME_CONTRACT_TYPE_Cash_loans")
     YEARS_EMPLOYED = FloatField("Years of Employment")
-    CNT_FAM_MEMBERS = FloatField("Number of familly")
+    Age_car = FloatField("Car's age")
     CREDIT_active = FloatField("Number of current credit")
     CREDIT_MEAN_OVERDUE_active = FloatField("Overdue amount for current credit")
     CREDIT_MEAN_active = FloatField("Amount for current credit")
+    proportion_OVERDUE_active = FloatField('proportion_OVERDUE_active')
     CREDIT_MEAN_closed = FloatField("Mean amount for closed credit")
-    CREDIT_MEAN_OVERDUE_closed = FloatField("Overdue amount for closed credit")
     proportion_OVERDUE_closed = FloatField("Ratio of credit with overdue",
     validators=[NumberRange(min=0, max=1, message='Number between  0 and 1 is \
     expected Ratio of credit with overdue')])
+    CNT_FAM_MEMBERS = FloatField("Number of familly")
     submit = SubmitField("Send")
 
 class RegisteredForm(Form):
@@ -166,17 +164,15 @@ def predict_credit(data):
     CREDIT_active = float(data['CREDIT_active'])
     CREDIT_MEAN_OVERDUE_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
     CREDIT_MEAN_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
-    CREDIT_MEAN_OVERDUE_closed = float(data['CREDIT_MEAN_OVERDUE_closed'])
     CREDIT_MEAN_closed = math.log10(float(data['CREDIT_MEAN_closed']) + 1)
     proportion_OVERDUE_closed = float(data['proportion_OVERDUE_closed'])
     CNT_FAM_MEMBERS = float(data['CNT_FAM_MEMBERS'])
-    NAME_CONTRACT_TYPE_Cash_loans = float(data['NAME_CONTRACT_TYPE_Cash_loans'])
     global dt
-    dt = [AMT_income, Loan_annuity, Age, Employed,
+    dt = np.array([AMT_income, Loan_annuity, Age, Employed,
     Age_car, CREDIT_active, CREDIT_MEAN_OVERDUE_active,
     CREDIT_MEAN_active, proportion_OVERDUE_active,
     CREDIT_MEAN_closed, proportion_OVERDUE_closed,
-    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS]
+    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS])
     print("***DATA FRAME FOR NEW CUSTOMER***")
     print(dt)
     y_pred = mdl.predict_proba(dt.reshape(1, -1))[0][1]
@@ -195,11 +191,9 @@ def predict_credit(data):
     CREDIT_active = float(data['CREDIT_active'])
     CREDIT_MEAN_OVERDUE_active = float(data['CREDIT_MEAN_active'])
     CREDIT_MEAN_active = float(data['CREDIT_MEAN_active'])
-    CREDIT_MEAN_OVERDUE_closed = float(data['CREDIT_MEAN_OVERDUE_closed'])
     CREDIT_MEAN_closed = float(data['CREDIT_MEAN_closed'])
     proportion_OVERDUE_closed = float(data['proportion_OVERDUE_closed'])
     CNT_FAM_MEMBERS = float(data['CNT_FAM_MEMBERS'])
-    NAME_CONTRACT_TYPE_Cash_loans = float(data['NAME_CONTRACT_TYPE_Cash_loans'])
     dt = [AMT_income, Loan_annuity, Age, Employed,
     Age_car, CREDIT_active, CREDIT_MEAN_OVERDUE_active,
     CREDIT_MEAN_active, proportion_OVERDUE_active,
@@ -527,7 +521,9 @@ def contact():
                 graphJSON=graphJSON, header=header, description = description ,
                 score = round(score*100,2))
             else:
-                return render_template('prediction_accepted.html', form = form,
+                return render_template('prediction_accepted.html',
+                form = form, education = education, job_type = job_type,
+                graphJSON=graphJSON, header=header, description = description ,
                 score = round(score*100,2))
     elif request.method == 'GET':
         return render_template('question.html', form = form,
