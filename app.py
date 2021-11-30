@@ -7,7 +7,7 @@ from wtforms import validators, ValidationError
 from wtforms.validators import NumberRange
 from wtforms.validators import DataRequired
 import pandas as pd
-#import numpy as np
+import numpy as np
 import math
 import json
 import plotly
@@ -16,6 +16,10 @@ from plotly.subplots import make_subplots
 import plotly.graph_objs as go
 import os
 import joblib
+from joblib.externals.loky import set_loky_pickler
+from joblib import parallel_backend
+from joblib import Parallel, delayed
+from joblib import wrap_non_picklable_objects
 import glob
 import shap
 import pickle
@@ -35,19 +39,17 @@ feat = ['AMT_INCOME_TOTAL',
  'AMT_ANNUITY',
  'AGE',
  'YEARS_EMPLOYED',
- 'NAME_CONTRACT_TYPE_Cash loans',
+ 'OWN_CAR_AGE',
  'CREDIT_active',
  'CREDIT_MEAN_OVERDUE_active',
  'CREDIT_MEAN_active',
  'proportion_OVERDUE_active',
- 'CREDIT_MEAN_OVERDUE_closed',
  'CREDIT_MEAN_closed',
  'proportion_OVERDUE_closed',
  'CREDIT_ask',
  'Number_years_Loan_Theorical',
  'INCOME_ANNUITY_RATIO',
  'CNT_FAM_MEMBERS']
-
 
 global df
 global shap_values
@@ -81,6 +83,7 @@ class ContactForm(Form):
     message='Income above 0 is expected')])
     Years_refund = FloatField("Number of years for payment credit")
     Age = FloatField("Age")
+    Age_car = FloatField("Car's age")
     proportion_OVERDUE_active = FloatField('proportion_OVERDUE_active')
     NAME_CONTRACT_TYPE_Cash_loans = FloatField("NAME_CONTRACT_TYPE_Cash_loans")
     YEARS_EMPLOYED = FloatField("Years of Employment")
@@ -158,6 +161,7 @@ def predict_credit(data):
     INCOME_ANNUITY_RATIO = float(data['AMT_income'])/tmp
     Age = float(data['Age'])
     Employed = float(data['YEARS_EMPLOYED'])
+    Age_car = float(data['Age_car'])
     proportion_OVERDUE_active = float(data['proportion_OVERDUE_active'])
     CREDIT_active = float(data['CREDIT_active'])
     CREDIT_MEAN_OVERDUE_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
@@ -169,32 +173,47 @@ def predict_credit(data):
     NAME_CONTRACT_TYPE_Cash_loans = float(data['NAME_CONTRACT_TYPE_Cash_loans'])
     global dt
     dt = [AMT_income, Loan_annuity, Age, Employed,
-    NAME_CONTRACT_TYPE_Cash_loans,
-    CREDIT_active, CREDIT_MEAN_OVERDUE_active,
+    Age_car, CREDIT_active, CREDIT_MEAN_OVERDUE_active,
     CREDIT_MEAN_active, proportion_OVERDUE_active,
-    CREDIT_MEAN_OVERDUE_closed, CREDIT_MEAN_closed, proportion_OVERDUE_closed,
+    CREDIT_MEAN_closed, proportion_OVERDUE_closed,
     Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS]
     print("***DATA FRAME FOR NEW CUSTOMER***")
     print(dt)
     y_pred = mdl.predict_proba(dt.reshape(1, -1))[0][1]
     print("score for reject credit {0}".format(y_pred))
     #save raw data
+    AMT_income = float(data['AMT_income'])
+    Credit_ask = float(data['Credit_ask'])
+    Years_refund = float(data['Years_refund'])
+    tmp = float(data['Credit_ask'])/Years_refund
+    Loan_annuity = tmp
+    INCOME_ANNUITY_RATIO = float(data['AMT_income'])/tmp
+    Age = float(data['Age'])
+    Employed = float(data['YEARS_EMPLOYED'])
+    Age_car = float(data['Age_car'])
+    proportion_OVERDUE_active = float(data['proportion_OVERDUE_active'])
+    CREDIT_active = float(data['CREDIT_active'])
+    CREDIT_MEAN_OVERDUE_active = float(data['CREDIT_MEAN_active'])
+    CREDIT_MEAN_active = float(data['CREDIT_MEAN_active'])
+    CREDIT_MEAN_OVERDUE_closed = float(data['CREDIT_MEAN_OVERDUE_closed'])
+    CREDIT_MEAN_closed = float(data['CREDIT_MEAN_closed'])
+    proportion_OVERDUE_closed = float(data['proportion_OVERDUE_closed'])
+    CNT_FAM_MEMBERS = float(data['CNT_FAM_MEMBERS'])
+    NAME_CONTRACT_TYPE_Cash_loans = float(data['NAME_CONTRACT_TYPE_Cash_loans'])
     dt = [AMT_income, Loan_annuity, Age, Employed,
-    NAME_CONTRACT_TYPE_Cash_loans,
-    CREDIT_active, CREDIT_MEAN_OVERDUE_active,
+    Age_car, CREDIT_active, CREDIT_MEAN_OVERDUE_active,
     CREDIT_MEAN_active, proportion_OVERDUE_active,
-    CREDIT_MEAN_OVERDUE_closed, CREDIT_MEAN_closed, proportion_OVERDUE_closed,
+    CREDIT_MEAN_closed, proportion_OVERDUE_closed,
     Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS]
     data = {"AMT_INCOME_TOTAL" : [float(data['AMT_income'])],
     "AMT_ANNUITY" : [tmp],
     "AGE" : [Age],
     "YEARS_EMPLOYED" : [Employed],
-    "NAME_CONTRACT_TYPE_Cash loans" : [NAME_CONTRACT_TYPE_Cash_loans],
-    "proportion_OVERDUE_active" : [proportion_OVERDUE_active],
+    "OWN_CAR_AGE" : [Age_car],
     "CREDIT_active" : [CREDIT_active],
     "CREDIT_MEAN_OVERDUE_active": [float(CREDIT_MEAN_OVERDUE_active)],
     "CREDIT_MEAN_active" : [float(data['CREDIT_MEAN_active'])],
-    "CREDIT_MEAN_OVERDUE_closed" : [CREDIT_MEAN_OVERDUE_closed],
+    "proportion_OVERDUE_active" : [proportion_OVERDUE_active],
     "CREDIT_MEAN_closed" : [float(data['CREDIT_MEAN_closed'])],
     "proportion_OVERDUE_closed" : [proportion_OVERDUE_closed],
     "CREDIT_ask" : [float(data['Credit_ask'])],
@@ -261,19 +280,17 @@ def score_credit(dt, credit_ask, Years_refund):
     print("*"*50)
     print("Compute score")
     print(dt.keys())
+    print(Years_refund)
     data = dt.copy()
     AMT_income = math.log10(float(data['AMT_INCOME_TOTAL']) + 1)
-    Credit_ask = math.log10(credit_ask + 1)
-    Years_refund = float(Years_refund)
-    tmp_annuity = credit_ask/Years_refund
-    Loan_annuity = math.log10(tmp_annuity + 1)
-    INCOME_ANNUITY_RATIO = float(data['AMT_INCOME_TOTAL'])/tmp_annuity
+    Credit_ask = math.log10(float(data['CREDIT_ask']) + 1)
+    tmp = float(data['CREDIT_ask'])/Years_refund
+    Loan_annuity = math.log10(tmp + 1)
+    INCOME_ANNUITY_RATIO = float(data['AMT_INCOME_TOTAL'])/tmp
     Age = float(data['AGE'])
     Employed = float(data['YEARS_EMPLOYED'])
-    NAME_CONTRACT_TYPE_Cash_loans = float(data['NAME_CONTRACT_TYPE_Cash loans'])
-    proportion_OVERDUE_active = float(data['proportion_OVERDUE_active']),
-    print("proportion_OVERDUE_active")
-    print(type(proportion_OVERDUE_active))
+    Age_car = float(data['OWN_CAR_AGE'])
+    proportion_OVERDUE_active = float(data['proportion_OVERDUE_active'])
     CREDIT_active = float(data['CREDIT_active'])
     CREDIT_MEAN_OVERDUE_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
     CREDIT_MEAN_active = math.log10(float(data['CREDIT_MEAN_active']) + 1)
@@ -281,19 +298,26 @@ def score_credit(dt, credit_ask, Years_refund):
     CREDIT_MEAN_closed = math.log10(float(data['CREDIT_MEAN_closed']) + 1)
     proportion_OVERDUE_closed = float(data['proportion_OVERDUE_closed'])
     CNT_FAM_MEMBERS = float(data['CNT_FAM_MEMBERS'])
-    dt_tmp = [AMT_income, Loan_annuity, Age, Employed,
-    NAME_CONTRACT_TYPE_Cash_loans, CREDIT_active, CREDIT_MEAN_OVERDUE_active,
-    CREDIT_MEAN_active, proportion_OVERDUE_active[0], CREDIT_MEAN_OVERDUE_closed,
+    #NAME_CONTRACT_TYPE_Cash_loans = float(data['NAME_CONTRACT_TYPE_Cash_loans'])
+    dt_tmp = np.array([AMT_income, Loan_annuity, Age, Employed,
+    Age_car, CREDIT_active, CREDIT_MEAN_OVERDUE_active,
+    CREDIT_MEAN_active, proportion_OVERDUE_active,
     CREDIT_MEAN_closed, proportion_OVERDUE_closed,
-    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS]
+    Credit_ask, Years_refund, INCOME_ANNUITY_RATIO, CNT_FAM_MEMBERS])
+    print("***DATA FRAME FOR NEW CUSTOMER***")
+    print(dt_tmp)
+    y_pred = mdl.predict_proba(dt_tmp.reshape(1, -1))[0][1]
     print(dt_tmp)
     print("9*9"*50)
     y_pred = mdl.predict_proba(dt_tmp.reshape(1, -1))[0][1]
-    col = ["AMT_income", "Loan_annuity", "Age", "Employed", "NAME_CONTRACT_TYPE_Cash_loans",
-    "CREDIT_active", "CREDIT_MEAN_OVERDUE_active",
-    "CREDIT_MEAN_active", "proportion_OVERDUE_active",
-    "CREDIT_MEAN_OVERDUE_closed", "CREDIT_MEAN_closed", "proportion_OVERDUE_closed",
-    "Credit_ask", "Years_refund", "INCOME_ANNUITY_RATIO", "CNT_FAM_MEMBERS"]
+    #y_pred = mdl.predict_proba(dt_tmp)[0][1]
+    print(y_pred)
+    col = ['AMT_INCOME_TOTAL', 'AMT_ANNUITY', 'AGE', 'YEARS_EMPLOYED',
+       'OWN_CAR_AGE', 'CREDIT_active', 'CREDIT_MEAN_OVERDUE_active',
+       'CREDIT_MEAN_active', 'proportion_OVERDUE_active', 'CREDIT_MEAN_closed',
+       'proportion_OVERDUE_closed', 'CREDIT_ask',
+       'Number_years_Loan_Theorical', 'INCOME_ANNUITY_RATIO',
+       'CNT_FAM_MEMBERS']
     print(len(col))
     dt_tmp = pd.DataFrame(data = [dt_tmp], columns = col)
     return y_pred, dt_tmp
