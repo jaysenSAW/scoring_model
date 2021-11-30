@@ -38,6 +38,10 @@
                {{ form.Age }}
                <br>
 
+               {{ form.Age_car.label }}<br>
+               {{ form.Age_car }}
+               <br>
+
                {{ form.CNT_FAM_MEMBERS.label }}<br>
                {{ form.CNT_FAM_MEMBERS }}
                <br>
@@ -58,9 +62,6 @@
                {{ form.CREDIT_MEAN_active }}
                <br>
 
-               {{ form.CREDIT_MEAN_OVERDUE_closed.label }}<br>
-               {{ form.CREDIT_MEAN_OVERDUE_closed }}
-               <br>
 
                {{ form.CREDIT_MEAN_closed.label }}<br>
                {{ form.CREDIT_MEAN_closed }}
@@ -77,13 +78,6 @@
                {{ form.YEARS_EMPLOYED.label }}<br>
                {{ form.YEARS_EMPLOYED }}
                <br>
-               <legend>Cash contract type</legend>
-               <select name= "NAME_CONTRACT_TYPE_Cash_loans" method="GET" action="/">
-                   {% for flag in [0,1] %}
-                   <option value= "{{flag}}" SELECTED>{{flag}}</option>"
-                   {% endfor %}
-               </select>
-
 
                <legend>Education information</legend>
 
