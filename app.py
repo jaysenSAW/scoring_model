@@ -534,7 +534,7 @@ def registered_customer():
         return render_template('prediction_refused.html',
         form = form, education = education, job_type = job_type,
         graphJSON=graphJSON, header=header, description = description ,
-        score = round(score*100,2))
+        score = round(dico_api['SCORE']*100,2))
     print("score < 0.5")
     return render_template('prediction_accepted.html',
     form = form, education = education, job_type = job_type,
