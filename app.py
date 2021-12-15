@@ -1,4 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import jsonify
+import requests
+import json
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm, Form
 from wtforms import StringField, SubmitField, TextField, IntegerField, FloatField
@@ -277,7 +280,7 @@ def score_credit(dt, credit_ask, Years_refund):
     print(Years_refund)
     data = dt.copy()
     AMT_income = math.log10(float(data['AMT_INCOME_TOTAL']) + 1)
-    Credit_ask = math.log10(float(data['CREDIT_ask']) + 1)
+    Credit_ask = math.log10(float(credit_ask) + 1)
     tmp = float(data['CREDIT_ask'])/Years_refund
     Loan_annuity = math.log10(tmp + 1)
     INCOME_ANNUITY_RATIO = float(data['AMT_INCOME_TOTAL'])/tmp
@@ -456,7 +459,43 @@ def parse_data(request, df_candidats):
     score, user_data_shap = score_credit(user_data, credit_ask, Years_refund)
     shap_values_candidat(user_data_shap)
     sub_df = close_candidats(df_candidats, users_id)
-    return user_data, score, sub_df
+    return user_data, sub_df
+
+@app.route('/registered_customers/<int:id_test>+<int:credit_ask>+<int:Years_refund>')
+def api_registered(id_test, credit_ask, Years_refund):
+    df_candidats
+    #users_id = 104867
+    users_id = id_test
+    user_data = df_candidats[df_candidats["SK_ID_CURR"] == users_id]
+    print("*****LOAD USER*****")
+    user_data.to_csv("data/customer_info.csv")
+    score, user_data_shap = score_credit(user_data, credit_ask, Years_refund)
+    print(score)
+    print("*****all informations*****")
+    #print(request.form.to_dict()) #all informations
+    # print(ID_customers, users_id)
+    user_data = df_candidats[df_candidats["SK_ID_CURR"] == users_id]
+    dictionnaire = {
+    'AMT_INCOME_TOTAL': user_data_shap['AMT_INCOME_TOTAL'].values[0],
+    'AMT_ANNUITY': float(credit_ask)/float(Years_refund),
+    'AGE': user_data['AGE'].values[0],
+    'YEARS_EMPLOYED': user_data_shap['YEARS_EMPLOYED'].values[0],
+    'OWN_CAR_AGE': user_data_shap['OWN_CAR_AGE'].values[0],
+    'CREDIT_active': user_data_shap['CREDIT_active'].values[0],
+    'CREDIT_MEAN_OVERDUE_active': user_data_shap['CREDIT_MEAN_OVERDUE_active'].values[0],
+    'CREDIT_MEAN_active': user_data_shap['CREDIT_MEAN_active'].values[0],
+    'proportion_OVERDUE_active': user_data_shap['proportion_OVERDUE_active'].values[0],
+    'CREDIT_MEAN_closed': user_data_shap['CREDIT_MEAN_closed'].values[0],
+    'proportion_OVERDUE_closed': user_data_shap['proportion_OVERDUE_closed'].values[0],
+    'CREDIT_ask': float(credit_ask),
+    'Number_years_Loan_Theorical': user_data_shap['Number_years_Loan_Theorical'].values[0],
+    'INCOME_ANNUITY_RATIO': user_data_shap['INCOME_ANNUITY_RATIO'].values[0],
+    'CNT_FAM_MEMBERS': user_data_shap['CNT_FAM_MEMBERS'].values[0],
+    "SCORE" : score
+    }
+    #print("DICO JSON")
+    #print(dictionnaire)
+    return jsonify(dictionnaire)
 
 @app.route('/registered_customers', methods = ['GET', 'POST'])
 def registered_customer():
@@ -470,11 +509,27 @@ def registered_customer():
         flash('All fields are required.')
         return render_template('registered_customers.html', form = form, users = users)
     print("method is post")
-    user_data, score, sub_df = parse_data(request, df_candidats)
+    ########
+    users_id = int(request.form.to_dict()["users_id"])
+    credit_ask = int(request.form.to_dict()['Credit_ask'])
+    Years_refund = int(request.form.to_dict()['Years_refund'])
+    #USE API TO COMPUTE SCORE AND RETURN IT
+    url_main = "http://localhost:5000/registered_customers/"
+    url_candidat = str(users_id)+"+"+str(credit_ask)+"+"+str(Years_refund)
+    print(url_main+url_candidat)
+    dico_api = requests.get(url_main+url_candidat)
+    dico_api = json.loads(dico_api.text)
+    print("*"*50)
+    print("Dico API")
+    print(dico_api.keys())
+    print(dico_api)
+    print("*"*50)
+    ########
+    user_data, sub_df = parse_data(request, df_candidats)
     education, job_type = give_edu_job(user_data)
-    print(education)
+    #print(education)
     graphJSON, header, description = summary_data_info(sub_df)
-    if score >= 0.5:
+    if dico_api['SCORE'] >= 0.5:
         print("score > 0.5")
         return render_template('prediction_refused.html',
         form = form, education = education, job_type = job_type,
@@ -484,7 +539,7 @@ def registered_customer():
     return render_template('prediction_accepted.html',
     form = form, education = education, job_type = job_type,
     graphJSON=graphJSON, header=header, description = description ,
-    score = round(score*100,2))
+    score = round(dico_api['SCORE']*100,2))
 
 
 def close_candidats2(df_candidats, request):
